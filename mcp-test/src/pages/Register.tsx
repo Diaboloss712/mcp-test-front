@@ -1,25 +1,30 @@
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useState, useEffect, type JSX } from "react";
-
-interface RegisterResponse {
-  access_token: string;
-}
+import {
+  registerWithSocialInfo,
+  type RegisterResponse,
+} from "../services/authService";
 
 export default function Register(): JSX.Element {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const email = searchParams.get("email");
-  const provider = searchParams.get("provider");
+  const emailParam = searchParams.get("email");
+  const providerParam = searchParams.get("provider");
 
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [provider, setProvider] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!email || !provider) {
+    if (!emailParam || !providerParam) {
       setError("유효하지 않은 접근입니다.");
+    } else {
+      setEmail(emailParam);
+      setProvider(providerParam);
     }
-  }, [email, provider]);
+  }, [emailParam, providerParam]);
 
   const handleSubmit = async () => {
     if (!username) {
@@ -28,24 +33,19 @@ export default function Register(): JSX.Element {
     }
 
     try {
-      const response = await fetch("http://localhost:8000/api/v1/users/social-register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, provider, username }),
-      });
-
-      const data: RegisterResponse = await response.json();
-
-      if (response.ok) {
-        navigate("/dashboard");
+      const data: RegisterResponse = await registerWithSocialInfo(
+        email,
+        provider,
+        username
+      );
+      localStorage.setItem("token", data.access_token);
+      navigate("/dashboard");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(`회원가입 실패: ${err.message}`);
       } else {
-        setError("회원가입 실패: " + (data as unknown as { detail: string })?.detail || "알 수 없는 오류");
+        setError("서버 오류로 회원가입에 실패했습니다.");
       }
-    } catch (err) {
-      console.error(err);
-      setError("서버 오류로 회원가입에 실패했습니다.");
     }
   };
 
@@ -54,7 +54,23 @@ export default function Register(): JSX.Element {
       <h2 className="text-2xl font-semibold mb-4">소셜 회원가입</h2>
       {error && <p className="text-red-500 mb-2">{error}</p>}
 
-      <label className="block mb-2 font-medium">닉네임</label>
+      <label className="block mb-1 font-medium">이메일</label>
+      <input
+        type="text"
+        className="w-full p-2 border rounded mb-4 bg-gray-100 text-gray-600"
+        value={email}
+        readOnly
+      />
+
+      <label className="block mb-1 font-medium">소셜</label>
+      <input
+        type="text"
+        className="w-full p-2 border rounded mb-4 bg-gray-100 text-gray-600"
+        value={provider}
+        readOnly
+      />
+
+      <label className="block mb-1 font-medium">닉네임</label>
       <input
         type="text"
         className="w-full p-2 border rounded mb-4"
@@ -67,7 +83,7 @@ export default function Register(): JSX.Element {
         onClick={handleSubmit}
         className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700"
       >
-        회원가입 완료
+        회원가입
       </button>
     </div>
   );
