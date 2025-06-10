@@ -36,8 +36,6 @@ export default function Callback(): JSX.Element {
           navigate(`/register?email=${err.email}&provider=${err.provider}`);
           return;
         }
-
-        alert(err instanceof Error ? err.message : "로그인 실패");
       }
     };
 
